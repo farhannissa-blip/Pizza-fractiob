@@ -80,17 +80,29 @@ export const LevelUpCelebration: React.FC<LevelUpCelebrationProps> = ({
   onBackToMap,
 }) => {
   const [burstKey, setBurstKey] = useState<number>(1);
+  const [isCheeringActive, setIsCheeringActive] = useState<boolean>(true);
 
   const nextLevelConfig = LEVELS.find((l) => l.id === levelConfig.id + 1);
   const levelUpXpBonus = stars * 50 + 50; // +100 s/d +200 XP
 
-  // Ledakan bintang gelombang kedua otomatis setelah 850ms agar perayaan terasa meriah
+  // Picu efek suara 'cheering' & 'applause' otomatis saat animasi Level Up muncul di tengah layar
   useEffect(() => {
-    const t = window.setTimeout(() => {
+    soundEngine.playCheerAndApplause();
+    setIsCheeringActive(true);
+
+    const t1 = window.setTimeout(() => {
       setBurstKey((prev) => prev + 1);
       soundEngine.playCoin();
     }, 850);
-    return () => clearTimeout(t);
+
+    const t2 = window.setTimeout(() => {
+      setIsCheeringActive(false);
+    }, 2200);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
 
   // Buat partikel hujan confetti di seluruh layar
@@ -145,9 +157,12 @@ export const LevelUpCelebration: React.FC<LevelUpCelebrationProps> = ({
   }, [modeHemat, burstKey]);
 
   const triggerManualCelebrationBurst = () => {
+    soundEngine.playCheerAndApplause();
     soundEngine.playLevelWin();
     soundEngine.playCoin();
     setBurstKey((prev) => prev + 1);
+    setIsCheeringActive(true);
+    window.setTimeout(() => setIsCheeringActive(false), 2000);
   };
 
   const starRankHeadline =
@@ -287,6 +302,23 @@ export const LevelUpCelebration: React.FC<LevelUpCelebrationProps> = ({
             <p className="text-xs sm:text-sm font-bold text-amber-300">
               {starRankHeadline}
             </p>
+
+            {/* Indikator Visual Suara Sorak-Sorai ('Cheering') & Tepuk Tangan ('Applause') */}
+            <div
+              className={`mt-2 inline-flex items-center gap-2 px-3.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
+                isCheeringActive
+                  ? 'bg-emerald-500/25 border-emerald-400 text-emerald-200 animate-bounce'
+                  : 'bg-stone-900 border-stone-700 text-amber-200/80'
+              }`}
+            >
+              <span>👏🎺</span>
+              <span>
+                {isCheeringActive
+                  ? 'Sorak-Sorai & Tepuk Tangan Pelanggan Bergema!'
+                  : 'Pelanggan Restoran Bertepuk Tangan Meriah!'}
+              </span>
+              <span>🎉👏</span>
+            </div>
           </div>
 
           {/* 3 Bintang Beranimasi Pop-In Bertahap */}
@@ -374,7 +406,7 @@ export const LevelUpCelebration: React.FC<LevelUpCelebrationProps> = ({
                 onClick={triggerManualCelebrationBurst}
                 className="w-full h-full py-1 px-2 rounded-lg bg-purple-600/40 hover:bg-purple-600/60 border border-purple-400/50 text-purple-200 font-sans font-bold text-[11px] cursor-pointer active:scale-95"
               >
-                🎆 Ledakkan Bintang Lagi!
+                👏🎆 Sorak & Bintang Lagi!
               </button>
             </div>
           </div>

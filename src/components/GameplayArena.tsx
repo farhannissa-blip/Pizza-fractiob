@@ -19,7 +19,11 @@ import {
   generateQuestionForCategory,
 } from '../engine/questionGenerator';
 import { PlayerProgress } from '../engine/storageEngine';
-import { CustomerCharacter, CustomerMood } from './RestaurantScene';
+import {
+  CustomerCharacter,
+  CustomerDisappointedWalkoutScene,
+  CustomerMood,
+} from './RestaurantScene';
 import { Gameplay3DTableState, Pizza3DTableSpec } from './Pizzeria3DBackground';
 import { LevelUpCelebration } from './LevelUpCelebration';
 import { soundEngine } from '../engine/soundEngine';
@@ -379,13 +383,13 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
     setQuestion(generateQuestionForCategory(pickedCat, levelConfig.worldId));
   };
 
-  // Handler saat batas waktu 10-20 detik habis: Pelanggan Marah & Pergi (-1 Nyawa)
+  // Handler saat batas waktu 10-20 detik habis: Pelanggan Kecewa/Sedih & Pergi (-1 Nyawa)
   const handleOrderTimeoutAngry = () => {
     soundEngine.playCustomerAngry();
     setCombo(0);
-    setCustomerMood('sad');
+    setCustomerMood('leaving_sad');
     setAngryPopup(true);
-    setTimeout(() => setAngryPopup(false), 2100);
+    setTimeout(() => setAngryPopup(false), 2400);
 
     const nextLives = Math.max(0, lives - 1);
     setLives(nextLives);
@@ -394,14 +398,14 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
       status: 'timeout_angry',
       headline:
         nextLives > 0
-          ? `⏰ WAKTU HABIS! Pelanggan Marah & Pergi! Nyawa Berkurang 1 (Sisa ❤️ ${nextLives}/${MAX_LIVES})`
-          : `⏰ WAKTU HABIS! Pelanggan Marah & Pergi! Seluruh 3 Nyawa Koki Habis!`,
+          ? `⏰ WAKTU ${maxOrderSeconds} DETIK HABIS! ${question.customer.name} Kecewa & Pergi Meninggalkan Restoran! (−1 ❤️ Nyawa, Sisa ${nextLives}/${MAX_LIVES})`
+          : `⏰ WAKTU ${maxOrderSeconds} DETIK HABIS! ${question.customer.name} Kecewa & Pergi! Seluruh 3 Nyawa Koki Habis!`,
     });
 
     if (nextLives <= 0) {
       window.setTimeout(() => {
         setIsGameOverLives(true);
-      }, 1900);
+      }, 2400);
     }
   };
 
@@ -722,24 +726,51 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
         </div>
 
         {/* Kartu Dialog Pesanan Pelanggan + Progress Bar Waktu Penyajian */}
-        <div className="bg-amber-50/95 rounded-2xl px-4 py-2 border-2 border-amber-500 shadow-lg space-y-1.5">
+        <div
+          className={`rounded-2xl px-4 py-2 border-2 shadow-lg space-y-1.5 transition-colors ${
+            customerMood === 'leaving_sad'
+              ? 'bg-rose-50/95 border-rose-500'
+              : 'bg-amber-50/95 border-amber-500'
+          }`}
+        >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
             <CustomerCharacter
               customer={question.customer}
               mood={customerMood}
               modeHemat={progress.modeHemat}
+              isImpatient={
+                orderTimeLeft <= 5 && evaluationState.status === 'idle'
+              }
             />
-            <div className="flex-1 bg-amber-100/90 rounded-xl px-3.5 py-1.5 border border-amber-300">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-amber-900">
+            <div
+              className={`flex-1 rounded-xl px-3.5 py-1.5 border ${
+                customerMood === 'leaving_sad'
+                  ? 'bg-rose-100/90 border-rose-300'
+                  : 'bg-amber-100/90 border-amber-300'
+              }`}
+            >
+              <div
+                className={`flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold ${
+                  customerMood === 'leaving_sad'
+                    ? 'text-rose-900'
+                    : 'text-amber-900'
+                }`}
+              >
                 <span>
-                  PESANAN PELANGGAN ({question.categoryTitle.toUpperCase()}):
+                  {customerMood === 'leaving_sad'
+                    ? '😢 PELANGGAN KECEWA & MENINGGALKAN RESTORAN:'
+                    : `PESANAN PELANGGAN (${question.categoryTitle.toUpperCase()}):`}
                 </span>
                 <span className="font-mono text-stone-700">
-                  Kesulitan: {currentDifficulty.toUpperCase()} (Batas Waktu {maxOrderSeconds} Detik)
+                  {customerMood === 'leaving_sad'
+                    ? `Waktu ${maxOrderSeconds} Detik Habis (−1 ❤️ Nyawa)`
+                    : `Kesulitan: ${currentDifficulty.toUpperCase()} (Batas Waktu ${maxOrderSeconds} Detik)`}
                 </span>
               </div>
               <p className="text-xs sm:text-sm font-display font-bold text-stone-900 leading-snug">
-                {question.dialogue}
+                {customerMood === 'leaving_sad'
+                  ? `“Yah, waktu ${maxOrderSeconds} detik sudah habis dan pizzaku belum siap... Aku sedih dan pergi dulu ya!”`
+                  : question.dialogue}
               </p>
             </div>
           </div>
@@ -790,9 +821,27 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
           </div>
         )}
 
-        {angryPopup && (
+        {angryPopup && evaluationState.status !== 'timeout_angry' && (
           <div className="bg-rose-600 text-white font-display font-bold px-5 py-2.5 rounded-full shadow-2xl border-2 border-rose-200 text-sm sm:text-base animate-bounce">
-            😡 Waktu {maxOrderSeconds} Detik Habis! Pelanggan Marah & Pergi! (-1 ❤️ Nyawa)
+            😢 Waktu {maxOrderSeconds} Detik Habis! Pelanggan Kecewa & Pergi! (-1 ❤️ Nyawa)
+          </div>
+        )}
+
+        {/* Animasi Utama Pelanggan Kecewa & Berjalan Pergi Saat Waktu 10-20 Detik Habis */}
+        {evaluationState.status === 'timeout_angry' && (
+          <div className="w-full px-2 mb-2">
+            <CustomerDisappointedWalkoutScene
+              customer={question.customer}
+              maxOrderSeconds={maxOrderSeconds}
+              remainingLives={lives}
+              maxLives={MAX_LIVES}
+              modeHemat={progress.modeHemat}
+              onNextCustomer={
+                lives > 0
+                  ? () => spawnNextCustomerOrder(ordersDone + 1)
+                  : undefined
+              }
+            />
           </div>
         )}
 

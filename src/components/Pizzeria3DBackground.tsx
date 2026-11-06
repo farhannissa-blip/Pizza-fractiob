@@ -1908,16 +1908,17 @@ export const Pizzeria3DBackground: React.FC<Pizzeria3DBackgroundProps> = ({
               rig.rightArm.rotation.x = -2.5 - Math.sin(elapsed * 12) * 0.35;
               rig.head.rotation.y = Math.sin(elapsed * 6) * 0.22;
             } else if (gp?.servingState === 'customer_angry_leave') {
-              // Waktu Habis: Pelanggan Marah, Berbalik Badan, & Berjalan Pergi Menuju Pintu!
-              rig.headMat.color.setHex(0xef4444);
-              rig.bubbleBgMat.color.setHex(0xef4444);
-              rig.group.rotation.y = THREE.MathUtils.damp(rig.group.rotation.y, -Math.PI * 0.75, 6.0, dt);
-              rig.group.position.x = THREE.MathUtils.damp(rig.group.position.x, 4.2, 1.8, dt);
-              rig.group.position.z = THREE.MathUtils.damp(rig.group.position.z, -3.2, 1.8, dt);
-              rig.group.position.y = Math.abs(Math.sin(elapsed * 14)) * 0.14;
-              rig.leftArm.rotation.x = Math.sin(elapsed * 18) * 0.9;
-              rig.rightArm.rotation.x = -Math.sin(elapsed * 18) * 0.9;
-              rig.head.rotation.y = Math.sin(elapsed * 20) * 0.35;
+              // Waktu 10-20 Detik Habis: Pelanggan Kecewa/Sedih, Menunduk & Menggeleng Kepala, lalu Berjalan Pergi Menuju Pintu!
+              rig.headMat.color.setHex(0xfda4af);
+              rig.bubbleBgMat.color.setHex(0xe11d48);
+              rig.head.rotation.x = THREE.MathUtils.damp(rig.head.rotation.x, 0.38, 6.0, dt);
+              rig.head.rotation.y = Math.sin(elapsed * 14) * 0.42;
+              rig.group.rotation.y = THREE.MathUtils.damp(rig.group.rotation.y, -Math.PI * 0.68, 4.5, dt);
+              rig.group.position.x = THREE.MathUtils.damp(rig.group.position.x, 3.6, 1.35, dt);
+              rig.group.position.z = THREE.MathUtils.damp(rig.group.position.z, -2.9, 1.35, dt);
+              rig.group.position.y = Math.abs(Math.sin(elapsed * 11)) * 0.11;
+              rig.leftArm.rotation.x = 0.35 + Math.sin(elapsed * 11) * 0.55;
+              rig.rightArm.rotation.x = 0.35 - Math.sin(elapsed * 11) * 0.55;
             } else {
               // Menunggu Pesanan: Condong ke meja saji, tangan kanan menunjuk pizza, kepala mengangguk antusias
               rig.headMat.color.setHex(0xfed7aa);

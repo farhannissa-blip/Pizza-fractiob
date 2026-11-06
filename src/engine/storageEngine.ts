@@ -88,16 +88,19 @@ export interface CustomFirebaseRTDBConfig {
   storageBucket: string;
   messagingSenderId: string;
   appId: string;
+  measurementId?: string;
 }
 
 export const DEFAULT_FIREBASE_CONFIG: CustomFirebaseRTDBConfig = {
-  apiKey: '',          // Isi dengan apiKey dari Firebase Console setelah membuat proyek
-  authDomain: '',      // Isi dengan authDomain (contoh: proyek-anda.firebaseapp.com)
-  databaseURL: '',     // Isi dengan databaseURL Realtime Database
-  projectId: '',       // Isi dengan projectId
-  storageBucket: '',   // Isi dengan storageBucket
-  messagingSenderId: '', // Isi dengan messagingSenderId
-  appId: '',           // Isi dengan appId
+  apiKey: 'AIzaSyB5rNFhykItulkadbfi4uOrlNw7TdGJGuc',
+  authDomain: 'pizza-79a0e.firebaseapp.com',
+  databaseURL:
+    'https://pizza-79a0e-default-rtdb.asia-southeast1.firebasedatabase.app',
+  projectId: 'pizza-79a0e',
+  storageBucket: 'pizza-79a0e.firebasestorage.app',
+  messagingSenderId: '200030515109',
+  appId: '1:200030515109:web:0efdb39a42a29a4e74c24c',
+  measurementId: 'G-HF4NTNDZFL',
 };
 
 const STORAGE_KEY_PROGRESS = 'pff_sdn66_progress_v1';
@@ -465,7 +468,23 @@ export function loadCustomFirebaseConfig(): CustomFirebaseRTDBConfig {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY_FB_CONFIG);
     if (!raw) return DEFAULT_FIREBASE_CONFIG;
-    return { ...DEFAULT_FIREBASE_CONFIG, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw) as Partial<CustomFirebaseRTDBConfig>;
+    return {
+      apiKey: parsed.apiKey?.trim() || DEFAULT_FIREBASE_CONFIG.apiKey,
+      authDomain:
+        parsed.authDomain?.trim() || DEFAULT_FIREBASE_CONFIG.authDomain,
+      databaseURL:
+        parsed.databaseURL?.trim() || DEFAULT_FIREBASE_CONFIG.databaseURL,
+      projectId: parsed.projectId?.trim() || DEFAULT_FIREBASE_CONFIG.projectId,
+      storageBucket:
+        parsed.storageBucket?.trim() || DEFAULT_FIREBASE_CONFIG.storageBucket,
+      messagingSenderId:
+        parsed.messagingSenderId?.trim() ||
+        DEFAULT_FIREBASE_CONFIG.messagingSenderId,
+      appId: parsed.appId?.trim() || DEFAULT_FIREBASE_CONFIG.appId,
+      measurementId:
+        parsed.measurementId?.trim() || DEFAULT_FIREBASE_CONFIG.measurementId,
+    };
   } catch {
     return DEFAULT_FIREBASE_CONFIG;
   }
@@ -477,6 +496,23 @@ export function saveCustomFirebaseConfig(cfg: CustomFirebaseRTDBConfig): void {
     window.localStorage.setItem(STORAGE_KEY_FB_CONFIG, JSON.stringify(cfg));
   } catch {
     // Ignore
+  }
+}
+
+async function fetchWithTimeout(
+  url: string,
+  options?: RequestInit,
+  timeoutMs = 4000
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -502,6 +538,9 @@ function sortAndCapTop100(entries: LeaderboardEntry[]): LeaderboardEntry[] {
   // Pastikan deduplikasi berdasarkan playerId dengan kebijakan BEST SCORE
   const map = new Map<string, LeaderboardEntry>();
   for (const item of entries) {
+    if (!item || typeof item.playerId !== 'string' || typeof item.score !== 'number') {
+      continue;
+    }
     const existing = map.get(item.playerId);
     if (!existing || item.score > existing.score) {
       map.set(item.playerId, item);
@@ -516,7 +555,7 @@ function sortAndCapTop100(entries: LeaderboardEntry[]): LeaderboardEntry[] {
  * Menyimpan atau memperbarui skor pemain dengan kebijakan BEST SCORE:
  * - Jika skor baru > skor lama: perbarui skor terbaik.
  * - Jika skor baru <= skor lama: pertahankan skor terbaik sebelumnya.
- * - Jika sedang offline atau Firebase RTDB dikonfigurasi, simpan ke antrean sinkronisasi.
+ * - Jika sedang offline atau Firebase RTDB dikonfigurasi, simpan ke antrean sinkronisasi tanpa mengganggu jalannya game.
  */
 export async function submitBestScoreToLeaderboard(
   progress: PlayerProgress,
@@ -572,18 +611,22 @@ export async function submitBestScoreToLeaderboard(
 
   const rank = sorted.findIndex((e) => e.playerId === newEntry.playerId) + 1;
 
-  // Coba sinkronisasi ke Firebase Realtime Database jika databaseURL diisi
+  // Sinkronisasi latar belakang ke Firebase Realtime Database (pizza-79a0e) tanpa mengganggu game
   let syncedOnline = false;
   const fbConfig = loadCustomFirebaseConfig();
   if (fbConfig.databaseURL && fbConfig.databaseURL.startsWith('https://')) {
     try {
       const cleanUrl = fbConfig.databaseURL.replace(/\/$/, '');
       const targetEntry = sorted.find((e) => e.playerId === newEntry.playerId) || newEntry;
-      const res = await fetch(`${cleanUrl}/leaderboard/${encodeURIComponent(targetEntry.playerId)}.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(targetEntry),
-      });
+      const res = await fetchWithTimeout(
+        `${cleanUrl}/leaderboard/${encodeURIComponent(targetEntry.playerId)}.json`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(targetEntry),
+        },
+        4000
+      );
       if (res.ok) {
         syncedOnline = true;
       } else {
@@ -611,8 +654,8 @@ function queuePendingSync(entry: LeaderboardEntry) {
 }
 
 /**
- * Mengambil & menyinkronkan Top 100 Leaderboard dari Firebase Realtime Database (jika dikonfigurasi)
- * dan menggabungkannya dengan penyimpanan lokal secara aman.
+ * Mengambil & menyinkronkan Top 100 Leaderboard dari Firebase Realtime Database (pizza-79a0e)
+ * dan menggabungkannya dengan penyimpanan lokal secara aman tanpa mengganggu jalannya game.
  */
 export async function fetchAndSyncTop100Leaderboard(): Promise<{
   entries: LeaderboardEntry[];
@@ -640,21 +683,26 @@ export async function fetchAndSyncTop100Leaderboard(): Promise<{
     if (pendingRaw) {
       const pendingList: LeaderboardEntry[] = JSON.parse(pendingRaw);
       for (const item of pendingList) {
-        await fetch(`${cleanUrl}/leaderboard/${encodeURIComponent(item.playerId)}.json`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(item),
-        });
+        await fetchWithTimeout(
+          `${cleanUrl}/leaderboard/${encodeURIComponent(item.playerId)}.json`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item),
+          },
+          3500
+        );
       }
       window.localStorage.removeItem(STORAGE_KEY_PENDING_SYNC);
     }
 
-    const response = await fetch(`${cleanUrl}/leaderboard.json`);
+    const response = await fetchWithTimeout(`${cleanUrl}/leaderboard.json`, undefined, 4000);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
     const data = await response.json();
-    const remoteEntries: LeaderboardEntry[] = data ? Object.values(data) : [];
+    const remoteEntries: LeaderboardEntry[] =
+      data && typeof data === 'object' ? Object.values(data) : [];
     const merged = sortAndCapTop100([...localEntries, ...remoteEntries]);
     window.localStorage.setItem(STORAGE_KEY_LEADERBOARD, JSON.stringify(merged));
 
@@ -670,8 +718,8 @@ export async function fetchAndSyncTop100Leaderboard(): Promise<{
       lastUpdated: nowStr,
       errorMessage:
         err instanceof Error
-          ? `Mode Lokal Aktif (Koneksi RTDB tertunda: ${err.message})`
-          : 'Mode Lokal Aktif',
+          ? `Cadangan Lokal Aktif (Sinkronisasi RTDB: ${err.message})`
+          : 'Cadangan Lokal Aktif',
     };
   }
 }

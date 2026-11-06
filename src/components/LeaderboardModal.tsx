@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   CustomFirebaseRTDBConfig,
+  DEFAULT_FIREBASE_CONFIG,
   LeaderboardEntry,
   fetchAndSyncTop100Leaderboard,
   loadCustomFirebaseConfig,
@@ -107,10 +108,10 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
             <div className="bg-stone-800 rounded-2xl p-4 sm:p-6 border border-amber-500/30 space-y-5">
               <div>
                 <h3 className="text-lg font-display font-bold text-amber-300">
-                  Konfigurasi Firebase Realtime Database (Online Multi-Pemain)
+                  Konfigurasi Firebase Realtime Database (Proyek: {fbConfig.projectId || 'pizza-79a0e'})
                 </h3>
                 <p className="text-xs sm:text-sm text-stone-300 mt-1">
-                  Masukkan kredensial proyek Firebase Anda di bawah ini untuk menghubungkan Top 100 Leaderboard secara daring lintas perangkat. Saat kolom <code className="text-amber-300">databaseURL</code> belum diisi atau koneksi terputus, game otomatis menyimpan skor terbaik secara lokal dan menyinkronkannya ketika koneksi pulih.
+                  Konfigurasi proyek Firebase (<code className="text-emerald-300">pizza-79a0e</code>) telah terpasang secara bawaan dan berjalan di latar belakang tanpa mengganggu jalannya game. Saat jaringan offline, skor terbaik disimpan secara lokal dan disinkronkan otomatis saat koneksi tersedia.
                 </p>
               </div>
 
@@ -131,19 +132,19 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     type="text"
                     value={fbConfig.authDomain}
                     onChange={(e) => setFbConfig({ ...fbConfig, authDomain: e.target.value })}
-                    placeholder="proyek-anda.firebaseapp.com"
+                    placeholder="pizza-79a0e.firebaseapp.com"
                     className="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-white font-mono"
                   />
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block font-bold text-amber-300 mb-1">
-                    databaseURL (Wajib untuk sinkronisasi Realtime Database)
+                    databaseURL (Realtime Database Asia-Southeast1)
                   </label>
                   <input
                     type="text"
                     value={fbConfig.databaseURL}
                     onChange={(e) => setFbConfig({ ...fbConfig, databaseURL: e.target.value })}
-                    placeholder="https://proyek-anda-default-rtdb.asia-southeast1.firebasedatabase.app"
+                    placeholder="https://pizza-79a0e-default-rtdb.asia-southeast1.firebasedatabase.app"
                     className="w-full px-3 py-2 rounded-lg bg-stone-900 border border-amber-500/50 text-white font-mono"
                   />
                 </div>
@@ -153,7 +154,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     type="text"
                     value={fbConfig.projectId}
                     onChange={(e) => setFbConfig({ ...fbConfig, projectId: e.target.value })}
-                    placeholder="proyek-anda"
+                    placeholder="pizza-79a0e"
                     className="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-white font-mono"
                   />
                 </div>
@@ -163,7 +164,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     type="text"
                     value={fbConfig.storageBucket}
                     onChange={(e) => setFbConfig({ ...fbConfig, storageBucket: e.target.value })}
-                    placeholder="proyek-anda.appspot.com"
+                    placeholder="pizza-79a0e.firebasestorage.app"
                     className="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-white font-mono"
                   />
                 </div>
@@ -173,7 +174,7 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     type="text"
                     value={fbConfig.messagingSenderId}
                     onChange={(e) => setFbConfig({ ...fbConfig, messagingSenderId: e.target.value })}
-                    placeholder="1234567890"
+                    placeholder="200030515109"
                     className="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-white font-mono"
                   />
                 </div>
@@ -183,17 +184,39 @@ export const LeaderboardModal: React.FC<LeaderboardModalProps> = ({
                     type="text"
                     value={fbConfig.appId}
                     onChange={(e) => setFbConfig({ ...fbConfig, appId: e.target.value })}
-                    placeholder="1:1234567890:web:abcdef"
+                    placeholder="1:200030515109:web:0efdb39a42a29a4e74c24c"
+                    className="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-white font-mono"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block font-bold text-amber-200 mb-1">measurementId</label>
+                  <input
+                    type="text"
+                    value={fbConfig.measurementId || ''}
+                    onChange={(e) => setFbConfig({ ...fbConfig, measurementId: e.target.value })}
+                    placeholder="G-HF4NTNDZFL"
                     className="w-full px-3 py-2 rounded-lg bg-stone-900 border border-stone-700 text-white font-mono"
                   />
                 </div>
 
-                <div className="sm:col-span-2 flex items-center gap-3 pt-2">
+                <div className="sm:col-span-2 flex flex-wrap items-center gap-3 pt-2">
                   <button
                     type="submit"
                     className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer"
                   >
                     Simpan & Hubungkan Firebase RTDB
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundEngine.playOrderPop();
+                      setFbConfig(DEFAULT_FIREBASE_CONFIG);
+                      saveCustomFirebaseConfig(DEFAULT_FIREBASE_CONFIG);
+                      setConfigSavedMsg('Dikembalikan ke konfigurasi bawaan pizza-79a0e!');
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-stone-700 hover:bg-stone-600 text-amber-200 font-bold cursor-pointer"
+                  >
+                    Reset ke Default (pizza-79a0e)
                   </button>
                   {configSavedMsg && (
                     <span className="text-emerald-400 font-semibold">{configSavedMsg}</span>

@@ -173,6 +173,115 @@ class SoundEngine {
     });
   }
 
+  /**
+   * Suara Sorak-Sorai ('Cheering') & Tepuk Tangan Meriah ('Applause')
+   * Dipicu saat animasi perayaan 'Level Up!' muncul di tengah layar.
+   */
+  public playCheerAndApplause() {
+    if (!this.sfxEnabled) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+
+    // 1. Lapisan Tepuk Tangan Meriah (Multi-Clap Bandpass Noise Bursts)
+    const clapCount = 26;
+    for (let i = 0; i < clapCount; i++) {
+      const clapDelay = i * 0.058 + (i % 3) * 0.014;
+      const clapDur = 0.055 + (i % 4) * 0.012;
+      const sampleCount = Math.max(1, Math.floor(ctx.sampleRate * clapDur));
+      const buffer = ctx.createBuffer(1, sampleCount, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let j = 0; j < sampleCount; j++) {
+        // Envelope tajam di awal lalu meluruh seperti tepukan tangan manusia
+        const env = Math.pow(1 - j / sampleCount, 1.8);
+        data[j] = (Math.random() * 2 - 1) * env;
+      }
+
+      const noiseSource = ctx.createBufferSource();
+      noiseSource.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      // Variasi frekuensi tiap tepukan (1100 Hz - 2300 Hz) agar terdengar seperti banyak orang
+      filter.frequency.setValueAtTime(1150 + ((i * 173) % 1150), now + clapDelay);
+      filter.Q.setValueAtTime(1.8, now + clapDelay);
+
+      // Kurva volume kerumunan (menguat di tengah lalu mereda halus)
+      const crowdEnvelope =
+        i < 5
+          ? (i + 1) / 5
+          : i > clapCount - 7
+          ? Math.max(0.15, (clapCount - i) / 7)
+          : 1;
+
+      const clapGain = ctx.createGain();
+      const peakGain = 0.14 * crowdEnvelope;
+      clapGain.gain.setValueAtTime(0.001, now + clapDelay);
+      clapGain.gain.linearRampToValueAtTime(peakGain, now + clapDelay + 0.006);
+      clapGain.gain.exponentialRampToValueAtTime(0.0008, now + clapDelay + clapDur);
+
+      noiseSource.connect(filter);
+      filter.connect(clapGain);
+      clapGain.connect(ctx.destination);
+
+      noiseSource.start(now + clapDelay);
+      noiseSource.stop(now + clapDelay + clapDur + 0.01);
+    }
+
+    // 2. Lapisan Sorak-Sorai Gembira ("Horeee / Cheering" Vocal Formant Swell)
+    const cheerVoices = [
+      { startFreq: 392.0, peakFreq: 587.33, delay: 0.08, dur: 0.75, vol: 0.07 },
+      { startFreq: 493.88, peakFreq: 783.99, delay: 0.14, dur: 0.82, vol: 0.07 },
+      { startFreq: 587.33, peakFreq: 987.77, delay: 0.2, dur: 0.88, vol: 0.065 },
+      { startFreq: 659.25, peakFreq: 1046.5, delay: 0.26, dur: 0.92, vol: 0.065 },
+    ];
+
+    cheerVoices.forEach((v) => {
+      const osc = ctx.createOscillator();
+      const formantFilter = ctx.createBiquadFilter();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(v.startFreq, now + v.delay);
+      osc.frequency.exponentialRampToValueAtTime(
+        v.peakFreq,
+        now + v.delay + v.dur * 0.65
+      );
+      osc.frequency.exponentialRampToValueAtTime(
+        v.peakFreq * 0.94,
+        now + v.delay + v.dur
+      );
+
+      // Filter formant vokal "Aaah / Yaaay"
+      formantFilter.type = 'bandpass';
+      formantFilter.frequency.setValueAtTime(1050, now + v.delay);
+      formantFilter.frequency.linearRampToValueAtTime(
+        1650,
+        now + v.delay + v.dur * 0.7
+      );
+      formantFilter.Q.setValueAtTime(2.4, now + v.delay);
+
+      gain.gain.setValueAtTime(0.001, now + v.delay);
+      gain.gain.linearRampToValueAtTime(v.vol, now + v.delay + 0.16);
+      gain.gain.exponentialRampToValueAtTime(0.0005, now + v.delay + v.dur);
+
+      osc.connect(formantFilter);
+      formantFilter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + v.delay);
+      osc.stop(now + v.delay + v.dur + 0.02);
+    });
+
+    // 3. Kilau Terompet & Bintang Kemenangan di Puncak Sorakan
+    const sparkleNotes = [1046.5, 1318.51, 1567.98, 2093.0];
+    sparkleNotes.forEach((freq, idx) => {
+      this.playTone(freq, 0.22, 'triangle', 0.11, 0.35 + idx * 0.09);
+    });
+  }
+
   /** Suara upgrade restoran dibeli */
   public playUpgrade() {
     if (!this.sfxEnabled) return;

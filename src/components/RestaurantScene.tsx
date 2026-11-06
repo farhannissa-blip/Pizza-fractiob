@@ -1,38 +1,73 @@
 import React from 'react';
 import { CustomerProfile } from '../engine/questionGenerator';
 
-export type CustomerMood = 'entering' | 'ordering' | 'happy' | 'sad';
+export type CustomerMood =
+  | 'entering'
+  | 'ordering'
+  | 'happy'
+  | 'sad'
+  | 'leaving_sad';
 
 interface CustomerCharacterProps {
   customer: CustomerProfile;
   mood: CustomerMood;
   modeHemat?: boolean;
+  isImpatient?: boolean;
 }
 
 export const CustomerCharacter: React.FC<CustomerCharacterProps> = ({
   customer,
   mood,
   modeHemat = false,
+  isImpatient = false,
 }) => {
+  const isLeavingSad = mood === 'leaving_sad';
+
   return (
     <div
       className={`relative flex items-center gap-3 transition-transform duration-300 ${
         !modeHemat && mood === 'ordering' ? 'animate-bob' : ''
-      } ${mood === 'happy' ? 'scale-105' : ''}`}
+      } ${mood === 'happy' ? 'scale-105' : ''} ${
+        !modeHemat && isLeavingSad ? 'animate-customer-leave-sad' : ''
+      }`}
     >
       {/* Avatar Karakter Pelanggan 2.5D */}
       <div
-        className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-amber-900/40 shadow-md flex items-center justify-center shrink-0 overflow-hidden"
-        style={{ backgroundColor: customer.avatarBg }}
+        className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 shadow-md flex items-center justify-center shrink-0 overflow-hidden transition-colors ${
+          isLeavingSad
+            ? 'border-rose-600 ring-2 ring-rose-500/50'
+            : isImpatient
+            ? 'border-amber-500 ring-2 ring-amber-400/50'
+            : 'border-amber-900/40'
+        }`}
+        style={{
+          backgroundColor: isLeavingSad ? '#FFE4E6' : customer.avatarBg,
+        }}
       >
         <svg viewBox="0 0 100 100" className="w-full h-full">
+          {/* Awan Mendung Kecewa di Atas Kepala Saat Waktu Habis */}
+          {isLeavingSad && (
+            <g opacity="0.88">
+              <ellipse cx="50" cy="11" rx="22" ry="7" fill="#64748B" />
+              <circle cx="38" cy="11" r="6" fill="#475569" />
+              <circle cx="62" cy="11" r="6" fill="#475569" />
+            </g>
+          )}
+
           {/* Bahu / Baju */}
           <path d="M 18 100 C 18 70, 82 70, 82 100 Z" fill={customer.shirtColor} />
           <path d="M 38 74 L 50 86 L 62 74" fill="#FFFFFF" opacity={0.85} />
 
           {/* Leher & Kepala */}
           <rect x="43" y="58" width="14" height="14" rx="4" fill="#FDBA74" />
-          <circle cx="50" cy="44" r="21" fill="#FED7AA" stroke="#EA580C" strokeWidth="1.5" />
+          <circle
+            cx="50"
+            cy="44"
+            r="21"
+            fill={isLeavingSad ? '#FECDD3' : '#FED7AA'}
+            stroke={isLeavingSad ? '#E11D48' : '#EA580C'}
+            strokeWidth="1.5"
+          />
 
           {/* Rambut / Topi berdasarkan tipe pelanggan */}
           {customer.type === 'vip' ? (
@@ -62,11 +97,46 @@ export const CustomerCharacter: React.FC<CustomerCharacterProps> = ({
             <path d="M 28 40 C 28 20, 72 20, 72 40 C 65 28, 35 28, 28 40 Z" fill="#451A03" />
           )}
 
-          {/* Mata sesuai ekspresi (Mood) */}
+          {/* Mata & Alis sesuai ekspresi (Mood) */}
           {mood === 'happy' ? (
             <g stroke="#1C1917" strokeWidth="2.8" fill="none" strokeLinecap="round">
               <path d="M 37 42 Q 41 37 45 42" />
               <path d="M 55 42 Q 59 37 63 42" />
+            </g>
+          ) : isLeavingSad ? (
+            /* Ekspresi Sangat Sedih & Kecewa + Air Mata Jatuh Saat Waktu Habis */
+            <g>
+              {/* Alis Melengkung Sedih Kecewa */}
+              <path
+                d="M 34 41 Q 40 36 45 38"
+                stroke="#1C1917"
+                strokeWidth="2.6"
+                fill="none"
+                strokeLinecap="round"
+              />
+              <path
+                d="M 66 41 Q 60 36 55 38"
+                stroke="#1C1917"
+                strokeWidth="2.6"
+                fill="none"
+                strokeLinecap="round"
+              />
+              {/* Mata Berkaca-kaca Sedih */}
+              <ellipse cx="41" cy="44" rx="3.2" ry="2.6" fill="#1C1917" />
+              <ellipse cx="59" cy="44" rx="3.2" ry="2.6" fill="#1C1917" />
+              <circle cx="40" cy="43" r="1.2" fill="#FFFFFF" />
+              <circle cx="58" cy="43" r="1.2" fill="#FFFFFF" />
+              {/* Tetesan Air Mata Biru Beranimasi Jatuh */}
+              <g className={!modeHemat ? 'animate-tear-drop' : ''}>
+                <path
+                  d="M 37 47 C 35 51, 39 54, 37 54 C 35 54, 34 51, 37 47 Z"
+                  fill="#38BDF8"
+                  stroke="#0284C7"
+                  strokeWidth="0.8"
+                />
+                <circle cx="36.5" cy="52" r="2.2" fill="#38BDF8" />
+                <circle cx="63.5" cy="52" r="2.2" fill="#38BDF8" />
+              </g>
             </g>
           ) : mood === 'sad' ? (
             <g stroke="#1C1917" strokeWidth="2.5" fill="none" strokeLinecap="round">
@@ -77,31 +147,68 @@ export const CustomerCharacter: React.FC<CustomerCharacterProps> = ({
             </g>
           ) : (
             <g fill="#1C1917">
+              {isImpatient && (
+                <>
+                  <line x1="36" y1="38" x2="45" y2="40" stroke="#1C1917" strokeWidth="2" />
+                  <line x1="64" y1="38" x2="55" y2="40" stroke="#1C1917" strokeWidth="2" />
+                </>
+              )}
               <circle cx="41" cy="43" r="3" />
               <circle cx="59" cy="43" r="3" />
               <circle cx="42" cy="42" r="1" fill="#FFFFFF" />
               <circle cx="60" cy="42" r="1" fill="#FFFFFF" />
+              {/* Keringat Gugup Saat Waktu Tinggal Sedikit */}
+              {isImpatient && (
+                <ellipse cx="67" cy="39" rx="2" ry="3.5" fill="#38BDF8" />
+              )}
             </g>
           )}
 
           {/* Pipi Merona */}
-          <circle cx="34" cy="49" r="3.5" fill="#FB7185" opacity={0.45} />
-          <circle cx="66" cy="49" r="3.5" fill="#FB7185" opacity={0.45} />
+          <circle
+            cx="34"
+            cy="49"
+            r="3.5"
+            fill={isLeavingSad ? '#94A3B8' : '#FB7185'}
+            opacity={0.45}
+          />
+          <circle
+            cx="66"
+            cy="49"
+            r="3.5"
+            fill={isLeavingSad ? '#94A3B8' : '#FB7185'}
+            opacity={0.45}
+          />
 
           {/* Mulut sesuai ekspresi */}
           {mood === 'happy' ? (
             <path d="M 41 51 Q 50 61 59 51 Z" fill="#DC2626" stroke="#7F1D1D" strokeWidth="1.2" />
+          ) : isLeavingSad ? (
+            /* Mulut Terbuka Sedih / Kecewa Berat */
+            <path
+              d="M 40 58 Q 50 47 60 58 Z"
+              fill="#881337"
+              stroke="#4C0519"
+              strokeWidth="1.5"
+            />
           ) : mood === 'sad' ? (
             <path d="M 42 56 Q 50 49 58 56" fill="none" stroke="#7F1D1D" strokeWidth="2.5" strokeLinecap="round" />
+          ) : isImpatient ? (
+            <path d="M 43 54 Q 50 51 57 54" fill="none" stroke="#7F1D1D" strokeWidth="2.2" strokeLinecap="round" />
           ) : (
             <path d="M 43 52 Q 50 57 57 52" fill="none" stroke="#7F1D1D" strokeWidth="2.4" strokeLinecap="round" />
           )}
         </svg>
 
-        {/* Indikator Ekspresi Kontras Tinggi (Bukan hanya warna) */}
+        {/* Indikator Ekspresi Kontras Tinggi */}
         {mood === 'happy' && (
           <span className="absolute bottom-0.5 right-0.5 bg-emerald-600 text-white text-[10px] font-bold px-1.5 py-0.2 rounded">
             PUAS!
+          </span>
+        )}
+        {isLeavingSad && (
+          <span className="absolute bottom-0.5 right-0.5 bg-rose-700 text-white text-[9px] font-bold px-1.5 py-0.2 rounded animate-pulse">
+            PERGI 😢
           </span>
         )}
         {mood === 'sad' && (
@@ -109,17 +216,182 @@ export const CustomerCharacter: React.FC<CustomerCharacterProps> = ({
             COBA LAGI
           </span>
         )}
+        {mood === 'ordering' && isImpatient && (
+          <span className="absolute bottom-0.5 right-0.5 bg-amber-600 text-white text-[9px] font-bold px-1.5 py-0.2 rounded animate-pulse">
+            ⏰ CEPAT!
+          </span>
+        )}
       </div>
 
       {/* Nama & Peran Pelanggan */}
       <div className="min-w-0">
-        <div className="text-xs font-semibold text-amber-800">
-          {customer.roleLabel} · {mood === 'happy' ? 'Senang & Membayar' : mood === 'sad' ? 'Menunggu Perbaikan' : 'Memesan Pizza'}
+        <div
+          className={`text-xs font-semibold ${
+            isLeavingSad ? 'text-rose-700 font-bold' : 'text-amber-800'
+          }`}
+        >
+          {customer.roleLabel} ·{' '}
+          {mood === 'happy'
+            ? 'Senang & Membayar'
+            : isLeavingSad
+            ? '😢 Kecewa & Pergi Meninggalkan Restoran!'
+            : mood === 'sad'
+            ? 'Menunggu Perbaikan'
+            : isImpatient
+            ? '⏰ Mulai Tidak Sabar!'
+            : 'Memesan Pizza'}
         </div>
-        <div className="text-base sm:text-lg font-display font-bold text-stone-900 truncate">
-          {customer.name}
+        <div className="text-base sm:text-lg font-display font-bold text-stone-900 truncate flex items-center gap-1.5">
+          <span>{customer.name}</span>
+          {isLeavingSad && <span className="text-sm">💔🚶‍♂️💨</span>}
         </div>
       </div>
+    </div>
+  );
+};
+
+/**
+ * Animasi Panggung Saat Waktu 10-20 Detik Habis:
+ * Pelanggan Tampak Sedih & Kecewa (Air Mata Jatuh, menggeleng kepala, lalu berjalan pergi menuju pintu keluar)
+ */
+export const CustomerDisappointedWalkoutScene: React.FC<{
+  customer: CustomerProfile;
+  maxOrderSeconds: number;
+  remainingLives: number;
+  maxLives: number;
+  modeHemat?: boolean;
+  onNextCustomer?: () => void;
+}> = ({
+  customer,
+  maxOrderSeconds,
+  remainingLives,
+  maxLives,
+  modeHemat = false,
+  onNextCustomer,
+}) => {
+  return (
+    <div
+      className="pointer-events-auto w-full max-w-xl mx-auto bg-gradient-to-r from-rose-950/96 via-stone-950/96 to-rose-950/96 text-rose-50 rounded-3xl p-4 sm:p-5 border-2 border-rose-500 shadow-2xl space-y-3"
+      role="alert"
+    >
+      {/* Baris Atas: Animasi Pelanggan Sedih Berjalan Pergi Menuju Pintu Keluar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-stone-900/90 rounded-2xl p-3.5 border border-rose-500/40">
+        {/* Karakter Pelanggan dengan Ekspresi Sedih & Air Mata */}
+        <div className="flex items-center gap-3.5">
+          <div
+            className={`relative ${
+              !modeHemat ? 'animate-customer-walkout' : ''
+            }`}
+          >
+            <div
+              className="w-20 h-20 rounded-2xl border-2 border-rose-400 shadow-lg flex items-center justify-center overflow-hidden relative"
+              style={{ backgroundColor: '#FFE4E6' }}
+            >
+              <svg viewBox="0 0 100 100" className="w-full h-full">
+                {/* Awan Mendung Kecewa */}
+                <ellipse cx="50" cy="12" rx="24" ry="7" fill="#64748B" />
+                {/* Tubuh & Baju Pelanggan */}
+                <path
+                  d="M 18 100 C 18 70, 82 70, 82 100 Z"
+                  fill={customer.shirtColor}
+                />
+                {/* Kepala Tertunduk Sedih */}
+                <rect x="43" y="58" width="14" height="14" rx="4" fill="#FDBA74" />
+                <circle
+                  cx="50"
+                  cy="45"
+                  r="21"
+                  fill="#FECDD3"
+                  stroke="#E11D48"
+                  strokeWidth="1.8"
+                />
+                {/* Alis & Mata Menangis Sedih */}
+                <path
+                  d="M 33 41 Q 40 36 45 39"
+                  stroke="#1C1917"
+                  strokeWidth="2.8"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M 67 41 Q 60 36 55 39"
+                  stroke="#1C1917"
+                  strokeWidth="2.8"
+                  fill="none"
+                  strokeLinecap="round"
+                />
+                <ellipse cx="41" cy="45" rx="3.2" ry="2.4" fill="#1C1917" />
+                <ellipse cx="59" cy="45" rx="3.2" ry="2.4" fill="#1C1917" />
+                {/* Air Mata Jatuh */}
+                <g className={!modeHemat ? 'animate-tear-drop' : ''}>
+                  <circle cx="36" cy="52" r="2.8" fill="#38BDF8" />
+                  <circle cx="64" cy="52" r="2.8" fill="#38BDF8" />
+                </g>
+                {/* Mulut Sedih Melengkung ke Bawah */}
+                <path
+                  d="M 39 59 Q 50 47 61 59"
+                  fill="none"
+                  stroke="#881337"
+                  strokeWidth="3.2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+            {/* Balon Dialog Kecewa di Atas Pelanggan */}
+            <div className="absolute -top-2.5 -right-3 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full border border-white shadow">
+              😢 Lama sekali...
+            </div>
+          </div>
+
+          <div className="text-left space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/25 border border-rose-400/50 text-rose-200 text-[10px] font-mono font-bold">
+              <span>⏰ WAKTU {maxOrderSeconds} DETIK HABIS!</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-display font-bold text-white leading-snug">
+              {customer.name} Kecewa & Pergi!
+            </h3>
+            <p className="text-xs text-rose-200 leading-relaxed">
+              &ldquo;Aku sudah menunggu {maxOrderSeconds} detik tapi pizzaku belum selesai... Aku pergi dulu ya!&rdquo;
+            </p>
+          </div>
+        </div>
+
+        {/* Ilustrasi Jejak Langkah Menuju Pintu Keluar & Konsekuensi -1 Nyawa */}
+        <div className="flex sm:flex-col items-center justify-center gap-2 bg-rose-950/90 px-3.5 py-2.5 rounded-2xl border border-rose-400/50 shrink-0">
+          <div className="flex items-center gap-1.5 text-lg">
+            <span className={!modeHemat ? 'animate-heart-break inline-block' : ''}>
+              💔
+            </span>
+            <span className="font-mono font-bold text-sm text-rose-300">
+              −1 NYAWA
+            </span>
+          </div>
+          <div className="flex items-center gap-1 text-xs font-bold text-amber-200">
+            <span>🚶‍♂️💨</span>
+            <span>→</span>
+            <span>🚪 Keluar</span>
+          </div>
+          <div className="text-[11px] font-mono text-stone-300">
+            Sisa Nyawa: ❤️ {remainingLives}/{maxLives}
+          </div>
+        </div>
+      </div>
+
+      {/* Baris Bawah: Tombol Panggil Pelanggan Berikutnya */}
+      {remainingLives > 0 && onNextCustomer && (
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <span className="text-xs text-amber-200">
+            💡 Ayo lebih cepat di pesanan berikutnya agar pelanggan tidak sedih!
+          </span>
+          <button
+            type="button"
+            onClick={onNextCustomer}
+            className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-stone-950 font-display font-bold text-xs sm:text-sm shadow-lg cursor-pointer transition-transform active:scale-95 whitespace-nowrap"
+          >
+            🛎️ Panggil Pelanggan Berikutnya (Sisa ❤️ {remainingLives}) →
+          </button>
+        </div>
+      )}
     </div>
   );
 };
