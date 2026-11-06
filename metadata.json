@@ -1,0 +1,6 @@
+{
+  "name": "Pizza Fraction Frenzy - SDN 66 Banda Aceh",
+  "description": "Game edukasi matematika pecahan interaktif bergaya simulasi restoran pizza 2.5D dengan metode GASING & Singapore Math CPA untuk SDN 66 Banda Aceh.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

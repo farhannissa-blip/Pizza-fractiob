@@ -1,0 +1,216 @@
+/**
+ * PROCEDURAL WEB AUDIO ENGINE — Pizza Fraction Frenzy
+ * Menghasilkan efek suara (SFX) dan musik latar restoran pizza Italia
+ * secara prosedural menggunakan Web Audio API tanpa ketergantungan file eksternal.
+ */
+
+class SoundEngine {
+  private ctx: AudioContext | null = null;
+  private sfxEnabled = true;
+  private musicEnabled = true;
+  private musicInterval: number | null = null;
+  private musicStep = 0;
+
+  constructor() {
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          this.pauseMusicLoop();
+        } else if (this.musicEnabled && this.ctx) {
+          this.startMusicLoop();
+        }
+      });
+    }
+  }
+
+  private getContext(): AudioContext | null {
+    if (typeof window === 'undefined') return null;
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+      }
+    }
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+    return this.ctx;
+  }
+
+  public setSfxEnabled(enabled: boolean) {
+    this.sfxEnabled = enabled;
+  }
+
+  public isSfxEnabled(): boolean {
+    return this.sfxEnabled;
+  }
+
+  public setMusicEnabled(enabled: boolean) {
+    this.musicEnabled = enabled;
+    if (enabled) {
+      this.startMusicLoop();
+    } else {
+      this.pauseMusicLoop();
+    }
+  }
+
+  public isMusicEnabled(): boolean {
+    return this.musicEnabled;
+  }
+
+  private playTone(
+    freq: number,
+    duration: number,
+    type: OscillatorType = 'sine',
+    volume = 0.14,
+    delay = 0,
+    slideToFreq?: number
+  ) {
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    const now = ctx.currentTime + delay;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    if (slideToFreq) {
+      osc.frequency.exponentialRampToValueAtTime(slideToFreq, now + duration);
+    }
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(volume, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  }
+
+  /** Suara pelanggan datang (Bel pintu restoran) */
+  public playCustomerArrive() {
+    if (!this.sfxEnabled) return;
+    this.playTone(659.25, 0.16, 'triangle', 0.14, 0);    // E5
+    this.playTone(523.25, 0.28, 'triangle', 0.14, 0.14); // C5
+  }
+
+  /** Suara pesanan diterima / tombol diklik */
+  public playOrderPop() {
+    if (!this.sfxEnabled) return;
+    this.playTone(440, 0.08, 'sine', 0.12, 0, 660);
+  }
+
+  /** Suara pizza dipotong / memilih potongan pizza */
+  public playSlicePizza() {
+    if (!this.sfxEnabled) return;
+    this.playTone(580, 0.07, 'triangle', 0.14, 0, 820);
+  }
+
+  /** Suara oven menyala / menyajikan pizza hangat */
+  public playOvenDing() {
+    if (!this.sfxEnabled) return;
+    this.playTone(1046.5, 0.35, 'sine', 0.16, 0); // C6 bell
+    this.playTone(1567.98, 0.4, 'sine', 0.08, 0.04);
+  }
+
+  /** Suara koin bertambah */
+  public playCoin() {
+    if (!this.sfxEnabled) return;
+    this.playTone(987.77, 0.09, 'sine', 0.15, 0);    // B5
+    this.playTone(1318.51, 0.24, 'sine', 0.16, 0.08); // E6
+  }
+
+  /** Suara jawaban benar + efek combo */
+  public playCorrect(combo = 1) {
+    if (!this.sfxEnabled) return;
+    const boost = Math.min(combo - 1, 5) * 35;
+    this.playTone(523.25 + boost, 0.12, 'triangle', 0.16, 0);
+    this.playTone(659.25 + boost, 0.12, 'triangle', 0.16, 0.1);
+    this.playTone(783.99 + boost, 0.14, 'triangle', 0.16, 0.2);
+    this.playTone(1046.5 + boost, 0.32, 'triangle', 0.18, 0.3);
+  }
+
+  /** Suara jawaban kurang tepat (lembut & tidak menghukum) */
+  public playWrong() {
+    if (!this.sfxEnabled) return;
+    this.playTone(330, 0.18, 'sine', 0.14, 0, 290);
+    this.playTone(261.63, 0.28, 'sine', 0.14, 0.16, 220);
+  }
+
+  /** Suara pelanggan marah & pergi saat waktu penyajian 10-20 detik habis */
+  public playCustomerAngry() {
+    if (!this.sfxEnabled) return;
+    this.playTone(240, 0.22, 'sawtooth', 0.14, 0, 180);
+    this.playTone(175, 0.38, 'sawtooth', 0.16, 0.2, 115);
+  }
+
+  /** Suara taburan topping pizza saat penyajian */
+  public playToppingSprinkle() {
+    if (!this.sfxEnabled) return;
+    const notes = [659.25, 783.99, 987.77, 1174.66];
+    notes.forEach((n, idx) => {
+      this.playTone(n, 0.06, 'triangle', 0.11, idx * 0.045);
+    });
+  }
+
+  /** Suara detak timer saat sisa waktu <= 5 detik */
+  public playTimerTick() {
+    if (!this.sfxEnabled) return;
+    this.playTone(880, 0.035, 'sine', 0.08, 0);
+  }
+
+  /** Suara level berhasil / bintang muncul */
+  public playLevelWin() {
+    if (!this.sfxEnabled) return;
+    const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5];
+    const delays = [0, 0.11, 0.22, 0.33, 0.48, 0.6];
+    const durations = [0.1, 0.1, 0.1, 0.15, 0.1, 0.45];
+    notes.forEach((n, idx) => {
+      this.playTone(n, durations[idx], 'triangle', 0.18, delays[idx]);
+    });
+  }
+
+  /** Suara upgrade restoran dibeli */
+  public playUpgrade() {
+    if (!this.sfxEnabled) return;
+    this.playTone(440, 0.1, 'triangle', 0.15, 0);
+    this.playTone(554.37, 0.1, 'triangle', 0.15, 0.09);
+    this.playTone(659.25, 0.1, 'triangle', 0.15, 0.18);
+    this.playTone(880, 0.3, 'triangle', 0.18, 0.27);
+  }
+
+  /** Musik latar pizzeria ringan & ceria */
+  public startMusicLoop() {
+    if (!this.musicEnabled || typeof window === 'undefined') return;
+    if (this.musicInterval !== null) return;
+
+    // Melodi Tarantella / Pizzeria ringan (frekuensi dalam Hz, 0 = istirahat)
+    const melody = [
+      392.0, 523.25, 659.25, 523.25,
+      587.33, 493.88, 392.0, 0,
+      440.0, 523.25, 659.25, 587.33,
+      523.25, 0, 392.0, 0,
+    ];
+
+    this.musicInterval = window.setInterval(() => {
+      if (!this.musicEnabled || document.hidden) return;
+      const note = melody[this.musicStep % melody.length];
+      this.musicStep++;
+      if (note > 0) {
+        this.playTone(note, 0.22, 'sine', 0.035, 0);
+      }
+    }, 320);
+  }
+
+  public pauseMusicLoop() {
+    if (this.musicInterval !== null) {
+      clearInterval(this.musicInterval);
+      this.musicInterval = null;
+    }
+  }
+}
+
+export const soundEngine = new SoundEngine();
