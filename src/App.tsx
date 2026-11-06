@@ -280,6 +280,8 @@ export default function App() {
         15,
         Math.max(prev.highestLevelUnlocked, result.levelId + 1)
       );
+      const levelUpXp = result.stars * 50 + 50;
+      const newXp = (prev.xp || 0) + levelUpXp;
       const newScore = prev.totalScore + result.bonusScore;
       const newMoney = prev.money + result.bonusMoney;
 
@@ -291,6 +293,7 @@ export default function App() {
       const updated: PlayerProgress = {
         ...prev,
         money: newMoney,
+        xp: newXp,
         totalScore: newScore,
         highestLevelUnlocked: nextUnlocked,
         levelStars: {
@@ -306,6 +309,8 @@ export default function App() {
 
       return updated;
     });
+    // Trigger ledakan partikel 3D di restoran saat Level Up
+    setRecentUpgradeKey((prev) => prev + 1);
   };
 
   const handleBuyUpgrade = (upgrade: RestaurantUpgrade) => {
@@ -1346,6 +1351,10 @@ export default function App() {
               onUpdate3DTable={setGameplayTableState}
               onCompleteOrder={handleCompleteOrder}
               onCompleteLevel={handleCompleteLevel}
+              onAdvanceToNextLevel={(nextLvlId) => {
+                setActiveLevelId(nextLvlId);
+                setPracticeCategoryId(null);
+              }}
               onOpenShop={() => setShopModalTab('shop')}
               onOpenLeaderboard={() => setShowLeaderboard(true)}
               onOpenRestaurantTour={openElegantRestaurantTour}

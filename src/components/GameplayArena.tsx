@@ -21,6 +21,7 @@ import {
 import { PlayerProgress } from '../engine/storageEngine';
 import { CustomerCharacter, CustomerMood } from './RestaurantScene';
 import { Gameplay3DTableState, Pizza3DTableSpec } from './Pizzeria3DBackground';
+import { LevelUpCelebration } from './LevelUpCelebration';
 import { soundEngine } from '../engine/soundEngine';
 
 interface GameplayArenaProps {
@@ -41,6 +42,7 @@ interface GameplayArenaProps {
     bonusScore: number;
     categoryId?: number;
   }) => void;
+  onAdvanceToNextLevel?: (nextLevelId: number) => void;
   onOpenShop: () => void;
   onOpenLeaderboard: () => void;
   onOpenRestaurantTour: () => void;
@@ -205,6 +207,7 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
   onUpdate3DTable,
   onCompleteOrder,
   onCompleteLevel,
+  onAdvanceToNextLevel,
   onOpenShop,
   onOpenLeaderboard,
   onOpenRestaurantTour,
@@ -1180,114 +1183,56 @@ export const GameplayArena: React.FC<GameplayArenaProps> = ({
       )}
 
       {/* =====================================================================
-          5. MODAL HASIL LEVEL SELESAI (VICTORY SUMMARY)
+          5. ANIMASI PERAYAAN "LEVEL UP!" DI TENGAH LAYAR (CONFETTI & LEDAKAN BINTANG)
          ===================================================================== */}
       {levelFinishedSummary && (
-        <div className="fixed inset-0 z-50 bg-stone-950/85 flex items-center justify-center p-4 pointer-events-auto">
-          <div className="bg-amber-50 border-2 border-amber-500 rounded-2xl max-w-lg w-full p-6 text-center space-y-5 shadow-2xl">
-            <div className="text-xs font-bold text-amber-800 tracking-wider">
-              {isCategoryPractice ? 'LATIHAN MATERI SELESAI!' : `${levelConfig.title.toUpperCase()} SELESAI!`}
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-display font-bold text-stone-900">
-              Luar Biasa, Chef {progress.identity?.name}!
-            </h2>
-
-            <div className="flex justify-center gap-3 py-1">
-              {[1, 2, 3].map((s) => (
-                <div
-                  key={s}
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-3xl border-2 shadow-md ${
-                    s <= levelFinishedSummary.stars
-                      ? 'bg-yellow-400 border-yellow-600 text-stone-950'
-                      : 'bg-stone-200 border-stone-300 text-stone-400'
-                  }`}
-                >
-                  ★
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-left bg-white p-4 rounded-xl border border-amber-200 font-mono text-xs sm:text-sm tabular-nums">
-              <div>
-                <div className="text-stone-500 font-sans">Pendapatan Pesanan:</div>
-                <div className="font-bold text-emerald-700 text-base">+${sessionMoney}</div>
-              </div>
-              <div>
-                <div className="text-stone-500 font-sans">Bonus Bintang Level:</div>
-                <div className="font-bold text-emerald-700 text-base">+${levelFinishedSummary.bonusMoney}</div>
-              </div>
-              <div>
-                <div className="text-stone-500 font-sans">Skor Sesi Ini:</div>
-                <div className="font-bold text-amber-800 text-base">
-                  +{sessionScore + levelFinishedSummary.bonusScore} pts
-                </div>
-              </div>
-              <div>
-                <div className="text-stone-500 font-sans">Sisa Nyawa Koki:</div>
-                <div className="font-bold text-rose-600 text-base">
-                  ❤️ {lives} / {MAX_LIVES}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
-              {!isCategoryPractice && levelConfig.id < LEVELS.length && (
-                <button
-                  onClick={() => {
-                    soundEngine.playCustomerArrive();
-                    setLevelFinishedSummary(null);
-                    setOrdersDone(0);
-                    setSessionScore(0);
-                    setSessionMoney(0);
-                    setFirstTryCorrectCount(0);
-                    onUpdate3DTable(null);
-                    onBackToMap();
-                  }}
-                  className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-base shadow-md cursor-pointer"
-                >
-                  Lanjut ke Level Berikutnya →
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  soundEngine.playOrderPop();
-                  onOpenShop();
-                }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs cursor-pointer"
-              >
-                🏪 Upgrade Restoran
-              </button>
-              <button
-                onClick={() => {
-                  soundEngine.playOrderPop();
-                  onOpenRestaurantTour();
-                }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs cursor-pointer"
-              >
-                🏛️ Lihat Restoran 3D
-              </button>
-              <button
-                onClick={() => {
-                  soundEngine.playOrderPop();
-                  onOpenLeaderboard();
-                }}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-stone-900 hover:bg-stone-800 text-amber-300 font-bold text-xs cursor-pointer"
-              >
-                🏆 TOP 100
-              </button>
-              <button
-                onClick={() => {
-                  soundEngine.playOrderPop();
-                  onUpdate3DTable(null);
-                  onBackToMap();
-                }}
-                className="w-full py-2.5 px-4 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold text-xs cursor-pointer"
-              >
-                Kembali ke Peta Level & Menu Utama
-              </button>
-            </div>
-          </div>
-        </div>
+        <LevelUpCelebration
+          levelConfig={levelConfig}
+          isCategoryPractice={isCategoryPractice}
+          practiceTitle={activePracticeCat?.title}
+          playerName={progress.identity?.name || 'Muda'}
+          stars={levelFinishedSummary.stars}
+          sessionMoney={sessionMoney}
+          bonusMoney={levelFinishedSummary.bonusMoney}
+          sessionScore={sessionScore}
+          bonusScore={levelFinishedSummary.bonusScore}
+          lives={lives}
+          maxLives={MAX_LIVES}
+          modeHemat={progress.modeHemat}
+          onNextLevel={(nextLvlId) => {
+            setLevelFinishedSummary(null);
+            setLives(MAX_LIVES);
+            setOrdersDone(0);
+            setSessionScore(0);
+            setSessionMoney(0);
+            setCombo(0);
+            setFirstTryCorrectCount(0);
+            if (onAdvanceToNextLevel) {
+              onAdvanceToNextLevel(nextLvlId);
+            } else {
+              onUpdate3DTable(null);
+              onBackToMap();
+            }
+          }}
+          onReplayCurrentLevel={() => {
+            soundEngine.playCustomerArrive();
+            setLevelFinishedSummary(null);
+            setLives(MAX_LIVES);
+            setOrdersDone(0);
+            setSessionScore(0);
+            setSessionMoney(0);
+            setCombo(0);
+            setFirstTryCorrectCount(0);
+            spawnNextCustomerOrder(0);
+          }}
+          onOpenShop={onOpenShop}
+          onOpenRestaurantTour={onOpenRestaurantTour}
+          onOpenLeaderboard={onOpenLeaderboard}
+          onBackToMap={() => {
+            onUpdate3DTable(null);
+            onBackToMap();
+          }}
+        />
       )}
     </div>
   );
